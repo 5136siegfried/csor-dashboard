@@ -334,11 +334,9 @@ function onStockFilterChange() {
   renderStock();
 }
 
-function renderStock() {
+function getFilteredStock() {
   if (!data.stock) data.stock = [];
-  populateStockLocOptions();
-
-  const list = data.stock.filter(item => {
+  return data.stock.filter(item => {
     if (stockFilters.q && !(item.nom||'').toLowerCase().includes(stockFilters.q)) return false;
     if (stockFilters.cat && item.categorie !== stockFilters.cat) return false;
     if (stockFilters.loc && item.localisation !== stockFilters.loc) return false;
@@ -346,6 +344,13 @@ function renderStock() {
     if (stockFilters.onlyCmd && !estACommander(item)) return false;
     return true;
   }).sort((a,b) => (a.nom||'').localeCompare(b.nom||'', 'fr'));
+}
+
+function renderStock() {
+  if (!data.stock) data.stock = [];
+  populateStockLocOptions();
+
+  const list = getFilteredStock();
 
   const perimLabelMap = { expired:'Périmé', soon:'Bientôt', ok:'OK', none:'—' };
   const perimClassMap = { expired:'perim-expired', soon:'perim-soon', ok:'perim-ok', none:'perim-none' };
@@ -432,6 +437,128 @@ function saveStock() {
 function deleteStock(id) {
   data.stock = (data.stock||[]).filter(x=>x.id!==id);
   saveData(); renderStock();
+}
+
+// ── Import CSV / Excel ───────────────────────────────────────────────────────
+const STOCK_FIELD_ALIASES = {
+  nom: ['nom','article','designation','produit','item'],
+  categorie: ['categorie','cat','category'],
+  localisation: ['localisation','emplacement','lieu','location'],
+  quantite: ['quantite','qte','qty','stock','quantity'],
+  unite: ['unite','unit'],
+  stockMin: ['stock minimum','stockmin','stock min','minimum','seuil','seuil minimum'],
+  peremption: ['peremption','expiration','date peremption','date de peremption','dlc'],
+};
+
+function normalizeHeader(h) {
+  return (h||'').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+function normalizeDateValue(v) {
+  if (v === '' || v == null) return '';
+  if (typeof v === 'number' && window.XLSX && XLSX.SSF) {
+    const d = XLSX.SSF.parse_date_code(v);
+    if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+    return '';
+  }
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  return '';
+}
+
+function mapRowToStockItem(row) {
+  const normalized = {};
+  Object.keys(row).forEach(k => { normalized[normalizeHeader(k)] = row[k]; });
+  function pick(aliases) {
+    for (const a of aliases) {
+      const key = normalizeHeader(a);
+      if (normalized[key] !== undefined && normalized[key] !== '') return normalized[key];
+    }
+    return '';
+  }
+  const nom = String(pick(STOCK_FIELD_ALIASES.nom)).trim();
+  if (!nom) return null;
+  const catRaw = normalizeHeader(pick(STOCK_FIELD_ALIASES.categorie));
+  let categorie = 'autre';
+  if (catRaw.includes('medic')) categorie = 'medical';
+  else if (catRaw.includes('mobil')) categorie = 'mobilier';
+  else if (catRaw.includes('equip')) categorie = 'equipement';
+  const qteRaw = String(pick(STOCK_FIELD_ALIASES.quantite));
+  const minRaw = String(pick(STOCK_FIELD_ALIASES.stockMin));
+  const qte = parseFloat(qteRaw.replace(',','.').replace(/[^\d.\-]/g,''));
+  const min = parseFloat(minRaw.replace(',','.').replace(/[^\d.\-]/g,''));
+  return {
+    id: Date.now() + Math.floor(Math.random()*100000),
+    nom, categorie,
+    localisation: String(pick(STOCK_FIELD_ALIASES.localisation)).trim(),
+    quantite: isNaN(qte) ? null : qte,
+    unite: String(pick(STOCK_FIELD_ALIASES.unite)).trim(),
+    stockMin: isNaN(min) ? null : min,
+    peremption: normalizeDateValue(pick(STOCK_FIELD_ALIASES.peremption)),
+    aCommanderManuel: false,
+  };
+}
+
+function handleStockImportFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const replace = document.getElementById('stock-import-replace').checked;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const wb = XLSX.read(evt.target.result, { type:'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval:'' });
+      const imported = rows.map(mapRowToStockItem).filter(Boolean);
+      if (!imported.length) { toast('Aucune ligne exploitable dans le fichier', true); return; }
+      if (!data.stock) data.stock = [];
+      data.stock = replace ? imported : data.stock.concat(imported);
+      saveData(); renderStock();
+      toast(`${imported.length} article(s) importé(s)${replace?' (stock remplacé)':''}`);
+    } catch (err) {
+      console.error(err);
+      toast('Erreur de lecture du fichier — vérifie le format', true);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value = '';
+}
+
+function exportStock() {
+  if (!data.stock) data.stock = [];
+  const scope = document.getElementById('stock-export-scope').value;
+
+  const scopeConfig = {
+    filtered:  { list: () => getFilteredStock(),                                                          suffix: 'filtre' },
+    all:       { list: () => [...data.stock].sort((a,b)=>(a.nom||'').localeCompare(b.nom||'', 'fr')),      suffix: 'complet' },
+    commander: { list: () => data.stock.filter(estACommander).sort((a,b)=>(a.nom||'').localeCompare(b.nom||'', 'fr')), suffix: 'a-commander' },
+    expired:   { list: () => data.stock.filter(i=>peremptionStatus(i.peremption)==='expired').sort((a,b)=>(a.nom||'').localeCompare(b.nom||'', 'fr')), suffix: 'perimes' },
+    expiring:  { list: () => data.stock.filter(i=>['expired','soon'].includes(peremptionStatus(i.peremption))).sort((a,b)=>(a.nom||'').localeCompare(b.nom||'', 'fr')), suffix: 'peremption-proche' },
+  };
+  const cfg = scopeConfig[scope] || scopeConfig.filtered;
+  const list = cfg.list();
+
+  if (!list.length) { toast('Aucun article ne correspond à cette sélection', true); return; }
+
+  const rows = list.map(item => ({
+    'Nom': item.nom || '',
+    'Catégorie': stockCatLabel[item.categorie] || 'Autre',
+    'Localisation': item.localisation || '',
+    'Quantité': item.quantite ?? '',
+    'Unité': item.unite || '',
+    'Stock minimum': item.stockMin ?? '',
+    'Péremption': item.peremption || '',
+    'À commander': estACommander(item) ? 'Oui' : 'Non',
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:32},{wch:14},{wch:20},{wch:10},{wch:8},{wch:12},{wch:12},{wch:11}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Stock');
+  const today = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `stock-csor-${today}-${cfg.suffix}.xlsx`);
+  toast(`${rows.length} article(s) exporté(s)`);
 }
 
 // ── Modals ────────────────────────────────────────────────────────────────────

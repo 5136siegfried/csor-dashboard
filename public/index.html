@@ -90,6 +90,19 @@
         <div class="flex-row">
           <div><div class="page-title">Stock & matériel</div><div class="page-sub">Mobilier, médical, équipement — inventaire CSOR</div></div>
           <div class="spacer"></div>
+          <label class="filter-toggle editor-only" style="display:none" title="Écrase le stock existant au lieu d'ajouter">
+            <input type="checkbox" id="stock-import-replace"> Remplacer le stock existant
+          </label>
+          <button class="btn btn-ghost editor-only" style="display:none" onclick="document.getElementById('stock-import-file').click()">Importer CSV/Excel</button>
+          <input type="file" id="stock-import-file" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleStockImportFile(event)">
+          <select class="filter-select" id="stock-export-scope" title="Quoi exporter">
+            <option value="filtered">Vue filtrée actuelle</option>
+            <option value="all">Tout (sauvegarde complète)</option>
+            <option value="commander">À commander</option>
+            <option value="expired">Périmés</option>
+            <option value="expiring">Périmés + péremption proche</option>
+          </select>
+          <button class="btn btn-ghost" onclick="exportStock()">Exporter</button>
           <button class="btn btn-primary editor-only" style="display:none" onclick="resetStockForm();openModal('stock')">+ Ajouter</button>
         </div>
       </div>
@@ -375,6 +388,7 @@
 
 <div id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
