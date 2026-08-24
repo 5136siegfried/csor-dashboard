@@ -297,6 +297,7 @@ const stockCatLabel = { mobilier:'Mobilier', medical:'Médical', equipement:'Éq
 const stockCatClass = { mobilier:'cat-mobilier', medical:'cat-medical', equipement:'cat-equipement', autre:'cat-autre' };
 
 let stockFilters = { q:'', cat:'', loc:'', perim:'', onlyCmd:false };
+let stockViewMode = 'table'; // 'table' | 'sacs'
 let editingStockId = null;
 
 function peremptionStatus(dateStr) {
@@ -361,16 +362,19 @@ function renderStock() {
     const perim = peremptionStatus(item.peremption);
     const clickable = isEditor() && !low;
     return `<div class="stock-row ${low?'low':''}" data-id="${item.id}">
-      <div class="stock-nom ${isEditor()?'editable':''}" ${isEditor()?`onclick="editStock(${item.id})"`:''}>${item.nom}</div>
+      <div class="stock-nom">${item.nom}</div>
       <div><span class="cat-tag ${stockCatClass[item.categorie]||'cat-autre'}">${stockCatLabel[item.categorie]||'Autre'}</span></div>
       <div class="stock-loc">${item.localisation||'—'}</div>
       <div class="stock-qte ${low?'low':''}">${item.quantite ?? '—'}${item.unite?' '+item.unite:''}</div>
       <div class="stock-min">${item.stockMin ?? '—'}</div>
       <div>${perim==='none' ? `<span class="perim-none">—</span>` : `<span class="perim-badge ${perimClassMap[perim]}">${perimLabelMap[perim]}${item.peremption?' · '+item.peremption:''}</span>`}</div>
+      <div class="stock-remarque" title="${(item.remarque||'').replace(/"/g,'&quot;')}">${item.remarque||'—'}</div>
       <div><div class="cmd-check ${cmd?'checked':''} ${low?'auto':''} ${!clickable?'disabled':''}"
             title="${low?'Automatique — stock sous le minimum':'Cliquer pour marquer à commander'}"
             ${clickable?`onclick="toggleStockCommande(${item.id})"`:''}></div></div>
-      <div>${isEditor()?`<button class="del-btn" onclick="deleteStock(${item.id})">✕</button>`:''}</div>
+      <div class="stock-actions">${isEditor() ? `
+        <button class="icon-btn" title="Éditer" onclick="editStock(${item.id})">✎</button>
+        <button class="icon-btn danger" title="Supprimer" onclick="deleteStock(${item.id})">✕</button>` : ''}</div>
     </div>`;
   }).join('') || '<div style="color:var(--muted);font-size:13px;padding:1rem 1.25rem">Aucun article ne correspond aux filtres.</div>';
 
@@ -378,6 +382,49 @@ function renderStock() {
   document.getElementById('stat-stock-cmd').textContent = data.stock.filter(estACommander).length;
   document.getElementById('stat-stock-perim').textContent =
     data.stock.filter(i => ['expired','soon'].includes(peremptionStatus(i.peremption))).length;
+
+  document.getElementById('stock-table-wrap').style.display = stockViewMode==='table' ? '' : 'none';
+  document.getElementById('stock-sacs-wrap').style.display = stockViewMode==='sacs' ? '' : 'none';
+  if (stockViewMode === 'sacs') renderStockSacs(list);
+}
+
+function toggleStockView() {
+  stockViewMode = stockViewMode === 'table' ? 'sacs' : 'table';
+  document.getElementById('stock-view-toggle').textContent = stockViewMode === 'table' ? 'Vue par sac' : 'Vue tableau';
+  renderStock();
+}
+
+function renderStockSacs(list) {
+  const groups = {};
+  list.forEach(item => {
+    const key = item.localisation || 'Non localisé';
+    (groups[key] = groups[key] || []).push(item);
+  });
+  const keys = Object.keys(groups).sort((a,b) => {
+    if (a === 'Non localisé') return 1;
+    if (b === 'Non localisé') return -1;
+    return a.localeCompare(b, 'fr');
+  });
+  const cards = keys.map(key => {
+    const items = [...groups[key]].sort((a,b)=>(a.nom||'').localeCompare(b.nom||'', 'fr'));
+    return `<div class="sac-card">
+      <div class="sac-card-header">
+        <div class="sac-card-title">${key}</div>
+        <div class="sac-card-count">${items.length} article${items.length>1?'s':''}</div>
+      </div>
+      ${items.map(item => {
+        const low = isLowStock(item);
+        return `<div class="sac-item ${low?'low':''}">
+          <div>
+            <div class="sac-item-name">${item.nom}</div>
+            ${item.remarque?`<div class="sac-item-remarque">${item.remarque}</div>`:''}
+          </div>
+          <div class="sac-item-qty">${item.quantite ?? '—'}${item.unite?' '+item.unite:''}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:13px">Aucun article ne correspond aux filtres.</div>';
+  document.getElementById('stock-sacs-wrap').innerHTML = `<div class="sacs-grid">${cards}</div>`;
 }
 
 function toggleStockCommande(id) {
@@ -400,6 +447,7 @@ function editStock(id) {
   document.getElementById('s-min').value = item.stockMin ?? '';
   document.getElementById('s-peremption').value = item.peremption||'';
   document.getElementById('s-cmd-manuel').checked = !!item.aCommanderManuel;
+  document.getElementById('s-remarque').value = item.remarque||'';
   populateStockLocOptions();
   openModal('stock');
 }
@@ -407,7 +455,7 @@ function editStock(id) {
 function resetStockForm() {
   editingStockId = null;
   document.getElementById('stock-modal-title').textContent = 'Nouvel article';
-  ['s-nom','s-loc','s-qte','s-unite','s-min','s-peremption'].forEach(id=>document.getElementById(id).value='');
+  ['s-nom','s-loc','s-qte','s-unite','s-min','s-peremption','s-remarque'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('s-cat').value = 'mobilier';
   document.getElementById('s-cmd-manuel').checked = false;
 }
@@ -423,6 +471,7 @@ function saveStock() {
     stockMin: document.getElementById('s-min').value===''? null : parseFloat(document.getElementById('s-min').value),
     peremption: document.getElementById('s-peremption').value,
     aCommanderManuel: document.getElementById('s-cmd-manuel').checked,
+    remarque: document.getElementById('s-remarque').value.trim(),
   };
   if (!data.stock) data.stock = [];
   if (editingStockId != null) {
@@ -435,7 +484,10 @@ function saveStock() {
 }
 
 function deleteStock(id) {
-  data.stock = (data.stock||[]).filter(x=>x.id!==id);
+  const item = (data.stock||[]).find(x=>x.id===id);
+  if (!item) return;
+  if (!confirm(`Supprimer « ${item.nom} » du stock ? Cette action est irréversible.`)) return;
+  data.stock = data.stock.filter(x=>x.id!==id);
   saveData(); renderStock();
 }
 
@@ -448,6 +500,7 @@ const STOCK_FIELD_ALIASES = {
   unite: ['unite','unit'],
   stockMin: ['stock minimum','stockmin','stock min','minimum','seuil','seuil minimum'],
   peremption: ['peremption','expiration','date peremption','date de peremption','dlc'],
+  remarque: ['remarque','note','notes','commentaire','observation'],
 };
 
 function normalizeHeader(h) {
@@ -498,6 +551,7 @@ function mapRowToStockItem(row) {
     stockMin: isNaN(min) ? null : min,
     peremption: normalizeDateValue(pick(STOCK_FIELD_ALIASES.peremption)),
     aCommanderManuel: false,
+    remarque: String(pick(STOCK_FIELD_ALIASES.remarque)).trim(),
   };
 }
 
@@ -550,10 +604,11 @@ function exportStock() {
     'Unité': item.unite || '',
     'Stock minimum': item.stockMin ?? '',
     'Péremption': item.peremption || '',
+    'Remarque': item.remarque || '',
     'À commander': estACommander(item) ? 'Oui' : 'Non',
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{wch:32},{wch:14},{wch:20},{wch:10},{wch:8},{wch:12},{wch:12},{wch:11}];
+  ws['!cols'] = [{wch:32},{wch:14},{wch:20},{wch:10},{wch:8},{wch:12},{wch:12},{wch:30},{wch:11}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Stock');
   const today = new Date().toISOString().slice(0,10);
