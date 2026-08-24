@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maraude — Tableau de bord</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="logo">CSOR<span>Tableau de bord</span></div>
+
+    <div class="nav-section">Pilotage</div>
+    <div class="nav-item active" data-page="dashboard"><span class="nav-icon">◈</span> Vue d'ensemble</div>
+    <div class="nav-item" data-page="actions"><span class="nav-icon">✓</span> Actions</div>
+
+    <div class="nav-section">Bénévoles</div>
+    <div class="nav-item" data-page="pipeline"><span class="nav-icon">⊞</span> Pipeline</div>
+    <div class="nav-item" data-page="formation"><span class="nav-icon">◎</span> Formation</div>
+
+    <div class="nav-section">Terrain</div>
+    <div class="nav-item" data-page="partenaires"><span class="nav-icon">◈</span> Partenaires</div>
+
+    <div class="nav-section">Matériel</div>
+    <div class="nav-item" data-page="stock"><span class="nav-icon">▤</span> Stock & inventaire</div>
+
+    <div class="nav-section">Finance</div>
+    <div class="nav-item" data-page="frais"><span class="nav-icon">€</span> Notes de frais</div>
+    <div class="nav-item" data-page="comptes"><span class="nav-icon">⊟</span> Dépôt des comptes</div>
+
+    <div class="sidebar-footer">
+      <div class="auth-status" id="auth-status">🔒 Mode lecture</div>
+      <button class="btn btn-ghost" id="auth-btn" style="width:100%;font-size:12px">Se connecter</button>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div class="page-title">Vue d'ensemble</div>
+        <div class="page-sub" id="last-update">Chargement…</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card" style="--c:#e8913a"><div class="stat-label">Bénévoles actifs</div><div class="stat-value" id="stat-actifs">–</div><div class="stat-delta">En maraude</div></div>
+        <div class="stat-card" style="--c:#5b9cf6"><div class="stat-label">En formation</div><div class="stat-value" id="stat-formation">–</div></div>
+        <div class="stat-card" style="--c:#4caf7d"><div class="stat-label">Points d'accueil</div><div class="stat-value" id="stat-points">–</div></div>
+        <div class="stat-card" style="--c:#e05c5c"><div class="stat-label">Frais en attente</div><div class="stat-value" id="stat-frais">–</div><div class="stat-delta" id="stat-frais-montant"></div></div>
+      </div>
+      <div class="section-title">Axes stratégiques</div>
+      <div class="axes-grid" id="axes-grid"></div>
+    </div>
+
+    <!-- PIPELINE -->
+    <div id="page-pipeline" class="page">
+      <div class="page-header">
+        <div class="flex-row">
+          <div><div class="page-title">Pipeline bénévoles</div><div class="page-sub">Glisser une carte pour changer le statut</div></div>
+          <div class="spacer"></div>
+          <button class="btn btn-primary editor-only" style="display:none" onclick="openModal('benevole')">+ Ajouter</button>
+        </div>
+      </div>
+      <div class="pipeline" id="pipeline-board"></div>
+    </div>
+
+    <!-- FORMATION -->
+    <div id="page-formation" class="page">
+      <div class="page-header"><div class="page-title">Formation</div></div>
+      <div class="formation-grid" id="formation-grid"></div>
+    </div>
+
+    <!-- PARTENAIRES -->
+    <div id="page-partenaires" class="page">
+      <div class="page-header">
+        <div class="flex-row">
+          <div><div class="page-title">Partenaires</div></div>
+          <div class="spacer"></div>
+          <button class="btn btn-primary editor-only" style="display:none" onclick="openModal('partenaire')">+ Ajouter</button>
+        </div>
+      </div>
+      <div class="partners-grid" id="partners-grid"></div>
+    </div>
+
+    <!-- STOCK / MATÉRIEL -->
+    <div id="page-stock" class="page">
+      <div class="page-header">
+        <div class="flex-row">
+          <div><div class="page-title">Stock & matériel</div><div class="page-sub">Mobilier, médical, équipement — inventaire CSOR</div></div>
+          <div class="spacer"></div>
+          <button class="btn btn-primary editor-only" style="display:none" onclick="resetStockForm();openModal('stock')">+ Ajouter</button>
+        </div>
+      </div>
+
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card" style="--c:#e8913a"><div class="stat-label">Articles suivis</div><div class="stat-value" id="stat-stock-total">–</div></div>
+        <div class="stat-card" style="--c:#e05c5c"><div class="stat-label">À commander</div><div class="stat-value" id="stat-stock-cmd">–</div></div>
+        <div class="stat-card" style="--c:#5b9cf6"><div class="stat-label">Péremption proche / dépassée</div><div class="stat-value" id="stat-stock-perim">–</div></div>
+      </div>
+
+      <div class="filters-bar">
+        <input type="text" class="filter-input" id="stock-search" placeholder="Rechercher un article…" oninput="onStockFilterChange()" style="min-width:200px">
+        <select class="filter-select" id="stock-filter-cat" onchange="onStockFilterChange()">
+          <option value="">Toutes catégories</option>
+          <option value="mobilier">Mobilier</option>
+          <option value="medical">Médical (pansements, produits…)</option>
+          <option value="equipement">Équipement</option>
+          <option value="autre">Autre</option>
+        </select>
+        <select class="filter-select" id="stock-filter-loc" onchange="onStockFilterChange()">
+          <option value="">Toutes localisations</option>
+        </select>
+        <select class="filter-select" id="stock-filter-perim" onchange="onStockFilterChange()">
+          <option value="">Toute péremption</option>
+          <option value="expired">Périmé</option>
+          <option value="soon">Péremption proche (≤ 60 j)</option>
+          <option value="ok">Péremption OK</option>
+          <option value="none">Sans péremption</option>
+        </select>
+        <label class="filter-toggle"><input type="checkbox" id="stock-filter-cmd" onchange="onStockFilterChange()"> À commander uniquement</label>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div class="stock-header">
+          <div>Article</div><div>Catégorie</div><div>Localisation</div><div>Quantité</div><div>Stock min</div><div>Péremption</div><div>À commander</div><div></div>
+        </div>
+        <div id="stock-list"></div>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div id="page-actions" class="page">
+      <div class="page-header">
+        <div class="flex-row">
+          <div><div class="page-title">Actions</div><div class="page-sub">Glisser pour réordonner</div></div>
+          <div class="spacer"></div>
+          <button class="btn btn-primary editor-only" style="display:none" onclick="openModal('action')">+ Ajouter</button>
+        </div>
+      </div>
+      <div class="actions-list" id="actions-list"></div>
+    </div>
+
+    <!-- NOTES DE FRAIS -->
+    <div id="page-frais" class="page">
+      <div class="page-header">
+        <div class="flex-row">
+          <div><div class="page-title">Notes de frais</div><div class="page-sub">Glisser pour réordonner</div></div>
+          <div class="spacer"></div>
+          <div id="frais-total" style="font-family:'DM Mono',monospace;font-size:13px;color:var(--muted)"></div>
+          <button class="btn btn-primary editor-only" style="display:none" onclick="openModal('frais')">+ Ajouter</button>
+        </div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div class="frais-header">
+          <div>Date</div><div>Description</div><div>Catégorie</div><div>Montant</div><div>Statut</div><div></div>
+        </div>
+        <div id="frais-list"></div>
+      </div>
+    </div>
+
+    <!-- DÉPÔT DES COMPTES -->
+    <div id="page-comptes" class="page">
+      <div class="page-header">
+        <div class="flex-row">
+          <div><div class="page-title">Dépôt des comptes</div><div class="page-sub">Suivi des exercices comptables</div></div>
+          <div class="spacer"></div>
+          <button class="btn btn-primary editor-only" style="display:none" onclick="openModal('compte')">+ Ajouter</button>
+        </div>
+      </div>
+      <div class="comptes-grid" id="comptes-grid"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-login">
+  <div class="modal">
+    <div class="modal-title">Accès éditeur</div>
+    <div class="form-group"><label>Mot de passe</label>
+      <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="form-error" id="login-error">Mot de passe incorrect.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('login')">Annuler</button>
+      <button class="btn btn-primary" onclick="doLogin()">Connexion</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-benevole">
+  <div class="modal">
+    <div class="modal-title">Nouveau bénévole</div>
+    <div class="form-group"><label>Nom complet</label><input type="text" id="b-nom" placeholder="Marie Dupont"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Profil</label>
+        <select id="b-profil">
+          <option value="sante">Étudiant santé</option>
+          <option value="social">Travailleur social</option>
+          <option value="secours">Secouriste</option>
+          <option value="autre">Grand public</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Statut</label>
+        <select id="b-statut">
+          <option value="prospect">Prospect</option>
+          <option value="contacte">Contacté</option>
+          <option value="formation">En formation</option>
+          <option value="actif">Actif</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Note</label><input type="text" id="b-note" placeholder="Source, commentaire…"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('benevole')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveBenevole()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-partenaire">
+  <div class="modal">
+    <div class="modal-title">Nouveau partenaire</div>
+    <div class="form-group"><label>Nom</label><input type="text" id="p-nom"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Type</label>
+        <select id="p-type">
+          <option value="alimentaire">Distribution alimentaire</option>
+          <option value="hebergement">Hébergement</option>
+          <option value="sante">Santé</option>
+          <option value="sociale">Action sociale</option>
+          <option value="autre">Autre</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Statut</label>
+        <select id="p-statut">
+          <option value="actif">Actif</option>
+          <option value="nego">En négociation</option>
+          <option value="prospect">Prospect</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Contact</label><input type="text" id="p-contact"></div>
+    <div class="form-group"><label>Fréquence</label><input type="text" id="p-freq" placeholder="ex : 2e vendredi du mois"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('partenaire')">Annuler</button>
+      <button class="btn btn-primary" onclick="savePartenaire()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-action">
+  <div class="modal">
+    <div class="modal-title">Nouvelle action</div>
+    <div class="form-group"><label>Description</label><input type="text" id="a-text"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Priorité</label>
+        <select id="a-prio"><option value="high">Haute</option><option value="med">Moyenne</option><option value="low">Basse</option></select>
+      </div>
+      <div class="form-group"><label>Axe</label>
+        <select id="a-axe">
+          <option>Recrutement</option><option>Formation</option><option>Partenariats</option>
+          <option>Fidélisation</option><option>Communication</option><option>Administratif</option>
+          <option>Financement</option><option>Matériel</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('action')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveAction()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-frais">
+  <div class="modal">
+    <div class="modal-title">Note de frais</div>
+    <div class="form-group"><label>Description</label><input type="text" id="f-desc" placeholder="Transport, matériel…"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Date</label><input type="date" id="f-date"></div>
+      <div class="form-group"><label>Montant (€)</label><input type="number" id="f-montant" placeholder="0.00" step="0.01"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Catégorie</label>
+        <select id="f-cat">
+          <option value="Transport">Transport</option>
+          <option value="Matériel">Matériel</option>
+          <option value="Restauration">Restauration</option>
+          <option value="Communication">Communication</option>
+          <option value="Formation">Formation</option>
+          <option value="Autre">Autre</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Statut</label>
+        <select id="f-statut">
+          <option value="attente">En attente</option>
+          <option value="valide">Validé</option>
+          <option value="rembourse">Remboursé</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Bénévole / Nom</label><input type="text" id="f-nom" placeholder="Prénom Nom"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('frais')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveFrais()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-compte">
+  <div class="modal">
+    <div class="modal-title">Dépôt des comptes</div>
+    <div class="form-row">
+      <div class="form-group"><label>Exercice</label><input type="text" id="c-exercice" placeholder="2024"></div>
+      <div class="form-group"><label>Date de clôture</label><input type="date" id="c-date"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Produits (€)</label><input type="number" id="c-produits" placeholder="0" step="0.01"></div>
+      <div class="form-group"><label>Charges (€)</label><input type="number" id="c-charges" placeholder="0" step="0.01"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Trésorerie (€)</label><input type="number" id="c-treso" placeholder="0" step="0.01"></div>
+      <div class="form-group"><label>Statut dépôt</label>
+        <select id="c-statut">
+          <option value="preparation">En préparation</option>
+          <option value="valide">Validé en AG</option>
+          <option value="depose">Déposé en préfecture</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('compte')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveCompte()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-stock">
+  <div class="modal">
+    <div class="modal-title" id="stock-modal-title">Nouvel article</div>
+    <div class="form-group"><label>Nom de l'article</label><input type="text" id="s-nom" placeholder="Ex : Compresses stériles 10×10"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Catégorie</label>
+        <select id="s-cat">
+          <option value="mobilier">Mobilier</option>
+          <option value="medical">Médical (pansements, produits…)</option>
+          <option value="equipement">Équipement</option>
+          <option value="autre">Autre</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Localisation</label>
+        <input type="text" id="s-loc" list="stock-loc-options" placeholder="Ex : Local CSOR, sac armé 1…">
+      </div>
+    </div>
+    <datalist id="stock-loc-options"></datalist>
+    <div class="form-row">
+      <div class="form-group"><label>Quantité</label><input type="number" id="s-qte" step="1" placeholder="0"></div>
+      <div class="form-group"><label>Unité</label><input type="text" id="s-unite" placeholder="pcs, boîtes, L…"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Stock minimum</label><input type="number" id="s-min" step="1" placeholder="0"></div>
+      <div class="form-group"><label>Péremption</label><input type="date" id="s-peremption"></div>
+    </div>
+    <div class="form-group">
+      <label class="filter-toggle" style="font-size:12px"><input type="checkbox" id="s-cmd-manuel"> Marquer « à commander » manuellement</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('stock');resetStockForm()">Annuler</button>
+      <button class="btn btn-primary" onclick="saveStock()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

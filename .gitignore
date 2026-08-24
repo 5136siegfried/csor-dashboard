@@ -1,0 +1,24 @@
+# Dépendances
+node_modules/
+
+# Données persistées (montées en volume Docker en prod, générées localement en dev)
+data/
+*.data.json
+
+# Variables d'environnement (JWT_SECRET, EDITOR_PASSWORD...)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Système
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
