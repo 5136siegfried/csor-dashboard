@@ -164,6 +164,53 @@
   .compte-detail { font-size:12px; color:var(--muted); margin-bottom:4px; }
   .compte-detail strong { color:var(--text); }
 
+  /* Stock / Matériel */
+  .filters-bar { display:flex; flex-wrap:wrap; gap:.75rem; margin-bottom:1.25rem; align-items:center; }
+  .filter-select, .filter-input {
+    background:var(--bg2); border:1px solid var(--border2); border-radius:8px;
+    padding:.55rem .8rem; color:var(--text); font-family:'Inter',sans-serif; font-size:12px; outline:none; transition:border-color .15s;
+  }
+  .filter-select:focus, .filter-input:focus { border-color:var(--accent); }
+  .filter-select option { background:var(--bg3); }
+  .filter-toggle { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); cursor:pointer; user-select:none; }
+  .filter-toggle input { accent-color:var(--accent); }
+
+  .stock-header { display:grid; grid-template-columns:1.6fr 130px 140px 90px 90px 130px 100px 32px; gap:.75rem;
+    padding:.5rem 1.25rem; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);
+    border-bottom:1px solid var(--border); }
+  .stock-row { display:grid; grid-template-columns:1.6fr 130px 140px 90px 90px 130px 100px 32px; gap:.75rem;
+    align-items:center; padding:.7rem 1.25rem; border-bottom:1px solid var(--border); transition:background .1s; }
+  .stock-row:last-child { border-bottom:none; }
+  .stock-row:hover { background:rgba(255,255,255,.02); }
+  .stock-row.low { background:rgba(224,92,92,.05); }
+  .stock-nom { font-size:13px; font-weight:500; }
+  .stock-nom.editable { cursor:pointer; }
+  .stock-nom.editable:hover { color:var(--accent); }
+  .stock-loc { font-size:12px; color:var(--muted); }
+  .stock-qte { font-family:'DM Mono',monospace; font-size:12px; }
+  .stock-qte.low { color:var(--red); font-weight:600; }
+  .stock-min { font-family:'DM Mono',monospace; font-size:12px; color:var(--muted); }
+
+  .cat-tag { display:inline-block; font-size:10px; padding:2px 7px; border-radius:4px; font-weight:500; }
+  .cat-mobilier   { background:rgba(91,156,246,.15); color:#5b9cf6; }
+  .cat-medical    { background:rgba(224,92,92,.15); color:#e05c5c; }
+  .cat-equipement { background:rgba(76,175,125,.15); color:#4caf7d; }
+  .cat-autre      { background:rgba(122,128,153,.15); color:#7a8099; }
+
+  .perim-badge { font-size:10px; padding:2px 8px; border-radius:20px; white-space:nowrap; }
+  .perim-ok       { background:rgba(76,175,125,.15); color:#4caf7d; }
+  .perim-soon     { background:rgba(232,145,58,.15); color:#e8913a; }
+  .perim-expired  { background:rgba(224,92,92,.15); color:#e05c5c; }
+  .perim-none     { color:var(--muted); font-size:11px; }
+
+  .cmd-check { width:18px; height:18px; border:1px solid var(--border2); border-radius:5px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .15s; }
+  .cmd-check.checked { background:var(--accent); border-color:var(--accent); }
+  .cmd-check.checked::after { content:'✓'; font-size:11px; color:#1a0f00; font-weight:700; }
+  .cmd-check.auto { background:var(--red); border-color:var(--red); }
+  .cmd-check.auto::after { color:#fff; }
+  .cmd-check.disabled { cursor:default; }
+
   /* Modals */
   .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:100; align-items:center; justify-content:center; }
   .modal-overlay.open { display:flex; }
@@ -214,6 +261,9 @@
 
     <div class="nav-section">Terrain</div>
     <div class="nav-item" data-page="partenaires"><span class="nav-icon">◈</span> Partenaires</div>
+
+    <div class="nav-section">Matériel</div>
+    <div class="nav-item" data-page="stock"><span class="nav-icon">▤</span> Stock & inventaire</div>
 
     <div class="nav-section">Finance</div>
     <div class="nav-item" data-page="frais"><span class="nav-icon">€</span> Notes de frais</div>
@@ -271,6 +321,52 @@
         </div>
       </div>
       <div class="partners-grid" id="partners-grid"></div>
+    </div>
+
+    <!-- STOCK / MATÉRIEL -->
+    <div id="page-stock" class="page">
+      <div class="page-header">
+        <div class="flex-row">
+          <div><div class="page-title">Stock & matériel</div><div class="page-sub">Mobilier, médical, équipement — inventaire CSOR</div></div>
+          <div class="spacer"></div>
+          <button class="btn btn-primary editor-only" style="display:none" onclick="resetStockForm();openModal('stock')">+ Ajouter</button>
+        </div>
+      </div>
+
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card" style="--c:#e8913a"><div class="stat-label">Articles suivis</div><div class="stat-value" id="stat-stock-total">–</div></div>
+        <div class="stat-card" style="--c:#e05c5c"><div class="stat-label">À commander</div><div class="stat-value" id="stat-stock-cmd">–</div></div>
+        <div class="stat-card" style="--c:#5b9cf6"><div class="stat-label">Péremption proche / dépassée</div><div class="stat-value" id="stat-stock-perim">–</div></div>
+      </div>
+
+      <div class="filters-bar">
+        <input type="text" class="filter-input" id="stock-search" placeholder="Rechercher un article…" oninput="onStockFilterChange()" style="min-width:200px">
+        <select class="filter-select" id="stock-filter-cat" onchange="onStockFilterChange()">
+          <option value="">Toutes catégories</option>
+          <option value="mobilier">Mobilier</option>
+          <option value="medical">Médical (pansements, produits…)</option>
+          <option value="equipement">Équipement</option>
+          <option value="autre">Autre</option>
+        </select>
+        <select class="filter-select" id="stock-filter-loc" onchange="onStockFilterChange()">
+          <option value="">Toutes localisations</option>
+        </select>
+        <select class="filter-select" id="stock-filter-perim" onchange="onStockFilterChange()">
+          <option value="">Toute péremption</option>
+          <option value="expired">Périmé</option>
+          <option value="soon">Péremption proche (≤ 60 j)</option>
+          <option value="ok">Péremption OK</option>
+          <option value="none">Sans péremption</option>
+        </select>
+        <label class="filter-toggle"><input type="checkbox" id="stock-filter-cmd" onchange="onStockFilterChange()"> À commander uniquement</label>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div class="stock-header">
+          <div>Article</div><div>Catégorie</div><div>Localisation</div><div>Quantité</div><div>Stock min</div><div>Péremption</div><div>À commander</div><div></div>
+        </div>
+        <div id="stock-list"></div>
+      </div>
     </div>
 
     <!-- ACTIONS -->
@@ -480,6 +576,42 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-stock">
+  <div class="modal">
+    <div class="modal-title" id="stock-modal-title">Nouvel article</div>
+    <div class="form-group"><label>Nom de l'article</label><input type="text" id="s-nom" placeholder="Ex : Compresses stériles 10×10"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Catégorie</label>
+        <select id="s-cat">
+          <option value="mobilier">Mobilier</option>
+          <option value="medical">Médical (pansements, produits…)</option>
+          <option value="equipement">Équipement</option>
+          <option value="autre">Autre</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Localisation</label>
+        <input type="text" id="s-loc" list="stock-loc-options" placeholder="Ex : Local CSOR, sac armé 1…">
+      </div>
+    </div>
+    <datalist id="stock-loc-options"></datalist>
+    <div class="form-row">
+      <div class="form-group"><label>Quantité</label><input type="number" id="s-qte" step="1" placeholder="0"></div>
+      <div class="form-group"><label>Unité</label><input type="text" id="s-unite" placeholder="pcs, boîtes, L…"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Stock minimum</label><input type="number" id="s-min" step="1" placeholder="0"></div>
+      <div class="form-group"><label>Péremption</label><input type="date" id="s-peremption"></div>
+    </div>
+    <div class="form-group">
+      <label class="filter-toggle" style="font-size:12px"><input type="checkbox" id="s-cmd-manuel"> Marquer « à commander » manuellement</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('stock');resetStockForm()">Annuler</button>
+      <button class="btn btn-primary" onclick="saveStock()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -559,7 +691,7 @@ document.querySelectorAll('.nav-item[data-page]').forEach(el => {
 function render() {
   if (!data) return;
   renderStats(); renderAxes(); renderPipeline(); renderFormation();
-  renderPartenaires(); renderActions(); renderFrais(); renderComptes();
+  renderPartenaires(); renderActions(); renderFrais(); renderComptes(); renderStock();
   document.getElementById('last-update').textContent =
     new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
 }
@@ -774,6 +906,149 @@ function renderComptes() {
       <div style="margin-top:.75rem"><span class="partner-status ${stC[c.statut]}">${stL[c.statut]}</span></div>
     </div>`;
   }).join('') || '<div style="color:var(--muted);font-size:13px">Aucun exercice enregistré.</div>';
+}
+
+// ── Stock / Matériel ──────────────────────────────────────────────────────────
+const PEREMPTION_SOON_DAYS = 60;
+const stockCatLabel = { mobilier:'Mobilier', medical:'Médical', equipement:'Équipement', autre:'Autre' };
+const stockCatClass = { mobilier:'cat-mobilier', medical:'cat-medical', equipement:'cat-equipement', autre:'cat-autre' };
+
+let stockFilters = { q:'', cat:'', loc:'', perim:'', onlyCmd:false };
+let editingStockId = null;
+
+function peremptionStatus(dateStr) {
+  if (!dateStr) return 'none';
+  const d = new Date(dateStr); if (isNaN(d)) return 'none';
+  const now = new Date(); now.setHours(0,0,0,0); d.setHours(0,0,0,0);
+  const diffDays = Math.floor((d - now) / 86400000);
+  if (diffDays < 0) return 'expired';
+  if (diffDays <= PEREMPTION_SOON_DAYS) return 'soon';
+  return 'ok';
+}
+
+function isLowStock(item) {
+  const q = parseFloat(item.quantite), m = parseFloat(item.stockMin);
+  return !isNaN(q) && !isNaN(m) && m > 0 && q < m;
+}
+function estACommander(item) { return isLowStock(item) || !!item.aCommanderManuel; }
+
+function populateStockLocOptions() {
+  const locs = [...new Set((data.stock||[]).map(s=>s.localisation).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+  const sel = document.getElementById('stock-filter-loc');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Toutes localisations</option>' + locs.map(l=>`<option value="${l}">${l}</option>`).join('');
+  sel.value = cur;
+  const dl = document.getElementById('stock-loc-options');
+  if (dl) dl.innerHTML = locs.map(l=>`<option value="${l}">`).join('');
+}
+
+function onStockFilterChange() {
+  stockFilters.q = document.getElementById('stock-search').value.trim().toLowerCase();
+  stockFilters.cat = document.getElementById('stock-filter-cat').value;
+  stockFilters.loc = document.getElementById('stock-filter-loc').value;
+  stockFilters.perim = document.getElementById('stock-filter-perim').value;
+  stockFilters.onlyCmd = document.getElementById('stock-filter-cmd').checked;
+  renderStock();
+}
+
+function renderStock() {
+  if (!data.stock) data.stock = [];
+  populateStockLocOptions();
+
+  const list = data.stock.filter(item => {
+    if (stockFilters.q && !(item.nom||'').toLowerCase().includes(stockFilters.q)) return false;
+    if (stockFilters.cat && item.categorie !== stockFilters.cat) return false;
+    if (stockFilters.loc && item.localisation !== stockFilters.loc) return false;
+    if (stockFilters.perim && peremptionStatus(item.peremption) !== stockFilters.perim) return false;
+    if (stockFilters.onlyCmd && !estACommander(item)) return false;
+    return true;
+  }).sort((a,b) => (a.nom||'').localeCompare(b.nom||'', 'fr'));
+
+  const perimLabelMap = { expired:'Périmé', soon:'Bientôt', ok:'OK', none:'—' };
+  const perimClassMap = { expired:'perim-expired', soon:'perim-soon', ok:'perim-ok', none:'perim-none' };
+
+  document.getElementById('stock-list').innerHTML = list.map(item => {
+    const low = isLowStock(item);
+    const cmd = estACommander(item);
+    const perim = peremptionStatus(item.peremption);
+    const clickable = isEditor() && !low;
+    return `<div class="stock-row ${low?'low':''}" data-id="${item.id}">
+      <div class="stock-nom ${isEditor()?'editable':''}" ${isEditor()?`onclick="editStock(${item.id})"`:''}>${item.nom}</div>
+      <div><span class="cat-tag ${stockCatClass[item.categorie]||'cat-autre'}">${stockCatLabel[item.categorie]||'Autre'}</span></div>
+      <div class="stock-loc">${item.localisation||'—'}</div>
+      <div class="stock-qte ${low?'low':''}">${item.quantite ?? '—'}${item.unite?' '+item.unite:''}</div>
+      <div class="stock-min">${item.stockMin ?? '—'}</div>
+      <div>${perim==='none' ? `<span class="perim-none">—</span>` : `<span class="perim-badge ${perimClassMap[perim]}">${perimLabelMap[perim]}${item.peremption?' · '+item.peremption:''}</span>`}</div>
+      <div><div class="cmd-check ${cmd?'checked':''} ${low?'auto':''} ${!clickable?'disabled':''}"
+            title="${low?'Automatique — stock sous le minimum':'Cliquer pour marquer à commander'}"
+            ${clickable?`onclick="toggleStockCommande(${item.id})"`:''}></div></div>
+      <div>${isEditor()?`<button class="del-btn" onclick="deleteStock(${item.id})">✕</button>`:''}</div>
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:13px;padding:1rem 1.25rem">Aucun article ne correspond aux filtres.</div>';
+
+  document.getElementById('stat-stock-total').textContent = data.stock.length;
+  document.getElementById('stat-stock-cmd').textContent = data.stock.filter(estACommander).length;
+  document.getElementById('stat-stock-perim').textContent =
+    data.stock.filter(i => ['expired','soon'].includes(peremptionStatus(i.peremption))).length;
+}
+
+function toggleStockCommande(id) {
+  const item = (data.stock||[]).find(x=>x.id===id);
+  if (!item || isLowStock(item)) return; // le flag auto prime, non éditable manuellement
+  item.aCommanderManuel = !item.aCommanderManuel;
+  saveData(); renderStock();
+}
+
+function editStock(id) {
+  const item = (data.stock||[]).find(x=>x.id===id);
+  if (!item) return;
+  editingStockId = id;
+  document.getElementById('stock-modal-title').textContent = "Modifier l'article";
+  document.getElementById('s-nom').value = item.nom||'';
+  document.getElementById('s-cat').value = item.categorie||'autre';
+  document.getElementById('s-loc').value = item.localisation||'';
+  document.getElementById('s-qte').value = item.quantite ?? '';
+  document.getElementById('s-unite').value = item.unite||'';
+  document.getElementById('s-min').value = item.stockMin ?? '';
+  document.getElementById('s-peremption').value = item.peremption||'';
+  document.getElementById('s-cmd-manuel').checked = !!item.aCommanderManuel;
+  populateStockLocOptions();
+  openModal('stock');
+}
+
+function resetStockForm() {
+  editingStockId = null;
+  document.getElementById('stock-modal-title').textContent = 'Nouvel article';
+  ['s-nom','s-loc','s-qte','s-unite','s-min','s-peremption'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('s-cat').value = 'mobilier';
+  document.getElementById('s-cmd-manuel').checked = false;
+}
+
+function saveStock() {
+  const nom = document.getElementById('s-nom').value.trim(); if (!nom) return;
+  const payload = {
+    nom,
+    categorie: document.getElementById('s-cat').value,
+    localisation: document.getElementById('s-loc').value.trim(),
+    quantite: document.getElementById('s-qte').value===''? null : parseFloat(document.getElementById('s-qte').value),
+    unite: document.getElementById('s-unite').value.trim(),
+    stockMin: document.getElementById('s-min').value===''? null : parseFloat(document.getElementById('s-min').value),
+    peremption: document.getElementById('s-peremption').value,
+    aCommanderManuel: document.getElementById('s-cmd-manuel').checked,
+  };
+  if (!data.stock) data.stock = [];
+  if (editingStockId != null) {
+    const item = data.stock.find(x=>x.id===editingStockId);
+    if (item) Object.assign(item, payload);
+  } else {
+    data.stock.push({ id: Date.now(), ...payload });
+  }
+  saveData(); closeModal('stock'); resetStockForm(); render();
+}
+
+function deleteStock(id) {
+  data.stock = (data.stock||[]).filter(x=>x.id!==id);
+  saveData(); renderStock();
 }
 
 // ── Modals ────────────────────────────────────────────────────────────────────

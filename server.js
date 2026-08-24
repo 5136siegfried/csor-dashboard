@@ -31,6 +31,7 @@ const DEFAULT_DATA = {
   actions: [],
   frais: [],
   comptes: [],
+  stock: [],
   axes: [
     { id: 'recrutement', titre: 'Recrutement', items: [
       { label: 'Fiche de poste bénévole rédigée', done: false },

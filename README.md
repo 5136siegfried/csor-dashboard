@@ -31,6 +31,7 @@ sans dépendance à des SaaS tiers, pensé pour une petite équipe non technique
 | Pipeline bénévoles | Kanban Prospect → Contacté → Formation → Actif |
 | Formation | 4 modules pédagogiques avec suivi |
 | Partenaires | Gestion des associations hôtes et points d'accueil |
+| Stock & matériel | Inventaire filtrable (catégorie, localisation, péremption) avec colonne « à commander » (auto sous stock minimum + coche manuelle) |
 | Actions | Backlog priorisé par axe stratégique |
 
 **Modèle d'accès** : lecture publique sans authentification / édition protégée par JWT.

@@ -1,0 +1,48 @@
+{
+  "benevoles": [],
+  "partenaires": [],
+  "frais": [],
+  "comptes": [],
+  "actions": [
+    { "id": 1, "text": "Publier une annonce bénévole sur JeVeuxAider.gouv.fr", "prio": "high", "axe": "Recrutement", "done": false },
+    { "id": 2, "text": "Contacter les IFSI / UFR médecine du secteur pour recrutement", "prio": "high", "axe": "Recrutement", "done": false },
+    { "id": 3, "text": "Créer un module e-learning socle commun (posture, protocole, sécurité)", "prio": "high", "axe": "Formation", "done": false },
+    { "id": 4, "text": "Convoquer l'Assemblée Générale de reprise", "prio": "high", "axe": "Administratif", "done": false },
+    { "id": 5, "text": "Lister et signer les conventions avec les assos partenaires existantes", "prio": "high", "axe": "Partenariats", "done": false },
+    { "id": 6, "text": "Rédiger le programme des 4 modules de formation présentiel", "prio": "med", "axe": "Formation", "done": false },
+    { "id": 7, "text": "Créer une page Instagram / LinkedIn de l'association", "prio": "med", "axe": "Communication", "done": false },
+    { "id": 8, "text": "Inventaire du matériel disponible et liste des manques", "prio": "med", "axe": "Matériel", "done": false },
+    { "id": 9, "text": "Identifier les appels à projets et subventions locales ouverts", "prio": "med", "axe": "Financement", "done": false },
+    { "id": 10, "text": "Mettre à jour les statuts si nécessaire post-reprise", "prio": "low", "axe": "Administratif", "done": false },
+    { "id": 11, "text": "Constituer un kit de communication pour le recrutement", "prio": "low", "axe": "Communication", "done": false },
+    { "id": 12, "text": "Préparer un dossier de demande de subvention mairie / DRAJES", "prio": "low", "axe": "Financement", "done": false }
+  ],
+  "axes": [
+    { "id": "recrutement", "titre": "Recrutement", "items": [
+      { "label": "Fiche de poste bénévole rédigée", "done": false },
+      { "label": "Publication JeVeuxAider", "done": false },
+      { "label": "Partenariat UFR santé", "done": false },
+      { "label": "Stand en école d'infirmiers", "done": false }
+    ]},
+    { "id": "formation", "titre": "Formation", "items": [
+      { "label": "Socle commun défini", "done": false },
+      { "label": "Module secours planifié", "done": false },
+      { "label": "Module orientation réalisé", "done": false },
+      { "label": "Formation situations complexes", "done": false }
+    ]},
+    { "id": "partenariats", "titre": "Partenariats & points accueil", "items": [
+      { "label": "Cartographie des ressources locales", "done": false },
+      { "label": "Première convention signée", "done": false },
+      { "label": "Deuxième partenaire formalisé", "done": false }
+    ]},
+    { "id": "fidelisation", "titre": "Fidélisation", "items": [
+      { "label": "Rythme maraude adapté défini", "done": false },
+      { "label": "Protocole débriefing post-maraude", "done": false },
+      { "label": "Parcours de progression interne", "done": false }
+    ]},
+    { "id": "communication", "titre": "Communication", "items": [
+      { "label": "Page LinkedIn/Instagram créée", "done": false },
+      { "label": "Kit recrutement visuel", "done": false }
+    ]}
+  ]
+}
